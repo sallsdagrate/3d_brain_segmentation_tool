@@ -1,9 +1,9 @@
 import os.path
+import shutil
 import urllib
 
 import streamlit as st
 import json
-import tarfile
 
 from app_utils import (
     get_hardware_info,
@@ -22,20 +22,26 @@ import urllib.request
 import tarfile
 import os
 
+
+@st.cache_resource
 def download_dataset():
     with st.spinner("Downloading and extracting dataset..."):
         try:
-            dataset_path = f"{DATA_ROOT}.tar"
-            if not os.path.exists(dataset_path):
+            if os.path.exists(f'{DATA_ROOT}/imagesTr') and len(os.listdir(f'{DATA_ROOT}/imagesTr')) != 495:
+                shutil.rmtree(f'{DATA_ROOT}')
+                os.remove(f'{DATA_ROOT}.tar')
+
+            if not os.path.exists(DATA_ROOT):
                 with st.spinner("Downloading dataset"):
-                    urllib.request.urlretrieve(DATASET_LINK_AWS, dataset_path)
+                    print('downloading...')
+                    urllib.request.urlretrieve(DATASET_LINK_AWS, f'{DATA_ROOT}.tar')
 
-            with st.spinner("Extracting files..."):
-                with tarfile.open(dataset_path) as datafile:
-                    datafile.extractall()
+                with st.spinner("Extracting files..."):
+                    with tarfile.open(f"{DATA_ROOT}.tar") as datafile:
+                        datafile.extractall()
 
-            st.success("Dataset downloaded and extracted successfully!")
-            print(os.listdir())
+                st.success("Dataset downloaded and extracted successfully!")
+
         except Exception as e:
             st.error(f"Error downloading dataset: {str(e)}")
             raise
@@ -71,8 +77,7 @@ def main():
     st.title("3D Brain Tumor Segmentation")
 
     # Load initial data and models
-    if not os.path.exists(DATA_ROOT):
-        download_dataset()
+    download_dataset()
     dataset_meta, test_files, models = initialize_app()
 
     # Hardware information
