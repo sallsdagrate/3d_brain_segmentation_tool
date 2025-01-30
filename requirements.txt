@@ -3,7 +3,6 @@ monai==1.4.0
 nibabel==5.3.2
 scikit_learn==1.6.1
 streamlit==1.41.1
-torch==2.5.1
 tqdm==4.67.1
 altair==5.5.0
 anyio==4.8.0
@@ -133,7 +132,7 @@ terminado==0.18.1
 threadpoolctl==3.5.0
 tinycss2==1.4.0
 toml==0.10.2
-torch==2.5.1
+torch==2.5.1+cpu
 tornado==6.4.2
 tqdm==4.67.1
 traitlets==5.14.3
@@ -278,7 +277,6 @@ terminado==0.18.1
 threadpoolctl==3.5.0
 tinycss2==1.4.0
 toml==0.10.2
-torch==2.5.1
 tornado==6.4.2
 tqdm==4.67.1
 traitlets==5.14.3

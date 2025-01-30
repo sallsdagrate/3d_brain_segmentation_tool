@@ -1,7 +1,8 @@
 import os.path
 import shutil
 import urllib
-
+import sys
+import torch
 import streamlit as st
 import json
 
@@ -73,6 +74,14 @@ def run_inference_cached(_models, method_name, volume_path, num_samples=10):
 
 
 def main():
+
+    if 'streamlit' in sys.modules:
+        torch._C._jit_override_can_fuse_on_cpu(True)
+
+    _dummy = torch.tensor([0])
+    if not torch.cuda.is_available():
+        torch.set_default_device('cpu')
+
     st.set_page_config(layout="wide")
     st.title("3D Brain Tumor Segmentation")
 
