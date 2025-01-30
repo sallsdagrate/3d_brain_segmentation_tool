@@ -35,7 +35,7 @@ def download_dataset():
                     datafile.extractall()
 
             st.success("Dataset downloaded and extracted successfully!")
-
+            print(os.listdir())
         except Exception as e:
             st.error(f"Error downloading dataset: {str(e)}")
             raise
