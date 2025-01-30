@@ -1,5 +1,6 @@
 import os.path
-import subprocess
+import urllib
+
 import streamlit as st
 import json
 import tarfile
@@ -17,15 +18,27 @@ from app_utils import (
     DATA_ROOT, DATASET_LINK_AWS, MODEL_PATHS
 )
 
+import urllib.request
+import tarfile
+import os
 
 def download_dataset():
     with st.spinner("Downloading and extracting dataset..."):
-        subprocess.call('apt install wget', shell=True)
-        subprocess.call(f'wget {DATASET_LINK_AWS}', shell=True)
-        print(os.listdir())
-        datafile = tarfile.open(f'{DATA_ROOT}.tar')
-        datafile.extractall()
-        datafile.close()
+        try:
+            dataset_path = f"{DATA_ROOT}.tar"
+            if not os.path.exists(dataset_path):
+                with st.spinner("Downloading dataset"):
+                    urllib.request.urlretrieve(DATASET_LINK_AWS, dataset_path)
+
+            with st.spinner("Extracting files..."):
+                with tarfile.open(dataset_path) as datafile:
+                    datafile.extractall()
+
+            st.success("Dataset downloaded and extracted successfully!")
+
+        except Exception as e:
+            st.error(f"Error downloading dataset: {str(e)}")
+            raise
 
 
 @st.cache_resource
