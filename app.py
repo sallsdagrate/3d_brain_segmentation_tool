@@ -20,6 +20,7 @@ from app_utils import (
 
 def download_dataset():
     with st.spinner("Downloading and extracting dataset..."):
+        subprocess.call('apt install wget', shell=True)
         subprocess.call(f'wget {DATASET_LINK_AWS}', shell=True)
         print(os.listdir())
         datafile = tarfile.open(f'{DATA_ROOT}.tar')
