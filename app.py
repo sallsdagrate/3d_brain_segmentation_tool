@@ -1,6 +1,8 @@
+import os.path
+import subprocess
 import streamlit as st
 import json
-from pathlib import Path
+import tarfile
 
 from app_utils import (
     get_hardware_info,
@@ -11,24 +13,19 @@ from app_utils import (
     generate_slice_visualization,
     generate_uncertainty_visualization,
     gather_predicted_std,
-    compute_entropy_map
+    compute_entropy_map,
+    DATA_ROOT, DATASET_LINK_AWS, MODEL_PATHS
 )
-
-# Configuration
-DATA_ROOT = Path("Task01_BrainTumour")
-MODEL_PATHS = {
-    "ensemble": [
-        "models/unet_3d_model_17.pth",
-        "models/unet_3d_model_18.pth",
-        "models/unet_3d_model_19.pth"
-    ],
-    "mc_dropout": ["models/unet_3d_model_19.pth"]
-}
 
 
 @st.cache_resource
 def initialize_app():
     """Load dataset metadata and models once"""
+    if not os.path.exists(DATA_ROOT):
+        subprocess.run(['wget', DATASET_LINK_AWS])
+        datafile = tarfile.open(f'{DATA_ROOT}.tar')
+        datafile.extractall()
+        datafile.close()
     with (DATA_ROOT / "dataset.json").open() as f:
         dataset_meta = json.load(f)
 

@@ -1,6 +1,6 @@
 import platform
 from typing import List, Dict, Tuple
-
+from pathlib import Path
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import nibabel as nib
@@ -10,7 +10,16 @@ import torch
 from utils.config import transform_test, cmap_black, transparent_cmap
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
+DATA_ROOT = Path("Task01_BrainTumour")
+DATASET_LINK_AWS = 'https://msd-for-monai.s3-us-west-2.amazonaws.com/Task01_BrainTumour.tar'
+MODEL_PATHS = {
+    "ensemble": [
+        "models/unet_3d_model_17.pth",
+        "models/unet_3d_model_18.pth",
+        "models/unet_3d_model_19.pth"
+    ],
+    "mc_dropout": ["models/unet_3d_model_19.pth"]
+}
 
 def get_hardware_info() -> Dict[str, str]:
     """Get system and PyTorch hardware information"""

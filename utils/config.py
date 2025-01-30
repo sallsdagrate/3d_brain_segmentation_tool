@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 from matplotlib import colors
 from monai.networks.nets import UNet
+
 from monai.transforms import (
     Compose,
     ToTensord,
@@ -86,7 +87,8 @@ def get_model(in_channels, num_classes):
 
 ''' 
 CONFIG VARIABLES
-''' 
+'''
+
 source_path = 'Task01_BrainTumour'
 num_workers = 8
 testVsTrainSplit = 0.2
