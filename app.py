@@ -1,106 +1,134 @@
 import streamlit as st
-import torch
-import nibabel as nib
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
 import json
+from pathlib import Path
 
-from utils.config import (
-    source_path,
-    get_model,
-    transform_test,
-    cmap_black,       # black background: 0=black,1=green,2=blue,3=red
-    transparent_cmap  # same idea, 0=transparent,1=green,2=blue,3=red
+from app_utils import (
+    get_hardware_info,
+    load_model,
+    run_inference,
+    create_static_color_key,
+    load_medical_volume,
+    generate_slice_visualization,
+    generate_uncertainty_visualization,
+    gather_predicted_std,
+    compute_entropy_map
 )
 
-@st.cache_data
-def run_inference(_model, image_path):
-    data_nii = nib.load(image_path).get_fdata().transpose(3,0,1,2)  
-    out = transform_test({"image": data_nii})
-    vol = out["image"].float()  # shape (4,H,W,D)
-    with torch.no_grad():
-        logits = _model(vol.unsqueeze(0))  # (1,4,H,W,D)
-        pred = torch.argmax(logits, dim=1) # (1,H,W,D)
-    return vol, pred.squeeze(0).cpu().numpy()  # (4,H,W,D), (H,W,D)
-
-def display_figure(volume, labels, ds_json, slice_idx, alpha):
-    """
-    2-row figure:
-      Row 0, col=0 => black seg
-      Row 0, col=[1..N] => grayscale channels
-      Row 1, col=0 => blank
-      Row 1, col=[1..N] => overlay
-    """
-    mods = ds_json["modality"]  # e.g., {"0":"FLAIR","1":"T1","2":"T1ce","3":"T2"}
-    n_mod = len(mods)
-    seg_slice = labels[..., slice_idx]
-
-    fig, axs = plt.subplots(2, n_mod + 1, figsize=(4*(n_mod+1), 8))
-
-    # Row0 col0 => black seg map
-    axs[0,0].imshow(seg_slice, cmap=cmap_black)
-    axs[0,0].set_title(f"Seg (Slice={slice_idx})")
-    axs[0,0].axis("off")
-
-    # Row0 col1..N => each channel grayscale
-    for i in range(n_mod):
-        base = volume[i,:,:,slice_idx].numpy()
-        axs[0,i+1].imshow(base, cmap="gray")
-        axs[0,i+1].set_title(mods[str(i)])
-        axs[0,i+1].axis("off")
-
-    # Row1 col0 => blank
-    axs[1,0].axis("off")
-
-    # Row1 col1..N => overlay
-    for i in range(n_mod):
-        base = volume[i,:,:,slice_idx].numpy()
-        axs[1,i+1].imshow(base, cmap="gray")
-        axs[1,i+1].imshow(seg_slice, cmap=transparent_cmap, alpha=alpha)
-        axs[1,i+1].set_title(f"Overlay {mods[str(i)]}, α={alpha:.2f}")
-        axs[1,i+1].axis("off")
-
-    fig.tight_layout()
-    return fig
+# Configuration
+DATA_ROOT = Path("Task01_BrainTumour")
+MODEL_PATHS = {
+    "ensemble": [
+        "models/unet_3d_model_17.pth",
+        "models/unet_3d_model_18.pth",
+        "models/unet_3d_model_19.pth"
+    ],
+    "mc_dropout": ["models/unet_3d_model_19.pth"]
+}
 
 
-model_path = "models/unet_3d_model_19.pth"
-with open(f"{source_path}/dataset.json") as f:
-    ds_json = json.load(f)
+@st.cache_resource
+def initialize_app():
+    """Load dataset metadata and models once"""
+    with (DATA_ROOT / "dataset.json").open() as f:
+        dataset_meta = json.load(f)
 
-m = get_model(len(ds_json["modality"]), len(ds_json["labels"]))
-m.load_state_dict(torch.load(model_path, map_location="cpu"))
-m.eval()
+    test_files = [str(DATA_ROOT / p) for p in dataset_meta["test"]]
 
-test_files = [source_path + s for s in ds_json["test"]]
+    models = {
+        "ensemble": [load_model(p, 4, 4) for p in MODEL_PATHS["ensemble"]],
+        "mc_dropout": [load_model(MODEL_PATHS["mc_dropout"][0], 4, 4, eval_mode=False)]
+    }
 
-st.set_page_config(layout="wide")
-st.title("3D MONAI UNet Inference on Brain Tumour Dataset")
+    return dataset_meta, test_files, models
 
-sel_img = st.selectbox("Select an image:", test_files)
-vol4d, lbl3d = run_inference(m, sel_img)  # (4,H,W,D), (H,W,D)
 
-# Multi-class selection
-label_map = ds_json["labels"]         # e.g. {"0":"background","1":"edema","2":"non-enhancing","3":"enhancing"}
-int_to_cls = {int(k):v for k,v in label_map.items()}
-all_classes = [int_to_cls[i] for i in range(1, len(int_to_cls))]  # skip background=0 in UI
+# Cache segmentation results
+@st.cache_data(max_entries=3, show_spinner=False)
+def run_inference_cached(_models, method_name, volume_path, num_samples=10):
+    vol = load_medical_volume(volume_path)
+    return run_inference(vol, _models[method_name], method=method_name, num_samples=num_samples)
 
-st.subheader("Select classes to show:")
-picked = st.multiselect("Classes:", all_classes, default=all_classes)
-sel_idxs = []
-for c in picked:
-    for idx,name in int_to_cls.items():
-        if name==c: sel_idxs.append(idx)
 
-# Mask out everything not in sel_idxs
-masked_label = np.zeros_like(lbl3d)
-for idx in sel_idxs:
-    masked_label[lbl3d==idx] = idx
+def main():
+    st.set_page_config(layout="wide")
+    st.title("3D Brain Tumor Segmentation")
 
-max_slice = vol4d.shape[-1]-1
-s_idx = st.slider("Slice index:", 0, max_slice, max_slice//2)
-alpha = st.slider("Overlay alpha:", 0.0, 1.0, 0.5, 0.01)
+    # Load initial data and models
+    dataset_meta, test_files, models = initialize_app()
 
-fig = display_figure(vol4d, masked_label, ds_json, s_idx, alpha)
-st.pyplot(fig)
+    # Hardware information
+    with st.expander("System Information"):
+        for k, v in get_hardware_info().items():
+            st.write(f"**{k}:** {v}")
+
+    # File selection
+    selected_file = st.selectbox("Select medical scan:", test_files)
+    volume = load_medical_volume(selected_file)
+
+    # Visualization controls
+    st.subheader("Visualization Settings")
+    col1, col2, col3 = st.columns([2, 4, 2])  # Adjust column widths
+
+    with col1:
+        method = st.radio("Uncertainty Method:", ["ensemble", "mc_dropout"])
+
+    with col2:
+        slice_idx = st.slider("Slice Index:", 0, volume.shape[-1] - 1, volume.shape[-1] // 2)
+        overlay_alpha = st.slider("Segmentation Opacity:", 0.0, 1.0, 0.5, 0.01)
+
+    with col3:
+        st.pyplot(create_static_color_key(dataset_meta["labels"]), use_container_width=False)
+
+    if method == "mc_dropout":
+        mc_passes = st.slider("Monte Carlo Samples:", 1, 20, 10)
+
+    if st.button("Perform Segmentation"):
+        with st.spinner("Analyzing scan..."):
+            # Get cached results
+            pred_label, mean_probs, std_probs = run_inference_cached(
+                models,
+                method,
+                selected_file,
+                mc_passes if method == "mc_dropout" else 10
+            )
+
+            # Calculate uncertainty metrics
+            pred_std = gather_predicted_std(std_probs, pred_label)
+            entropy_map = compute_entropy_map(mean_probs)
+
+            # Display results
+            st.subheader("Segmentation Results")
+
+            # Primary segmentation
+            st.markdown("#### Tissue Segmentation")
+            st.pyplot(generate_slice_visualization(
+                volume,
+                pred_label,
+                dataset_meta,
+                slice_idx,
+                overlay_alpha
+            ))
+
+            st.markdown("#### Standard Deviation Map")
+            st.pyplot(generate_uncertainty_visualization(
+                volume,
+                pred_std,
+                dataset_meta,
+                slice_idx,
+                title="Uncertainty",
+                cmap="magma"
+            ))
+
+            st.markdown("#### Entropy Analysis")
+            st.pyplot(generate_uncertainty_visualization(
+                volume,
+                entropy_map,
+                dataset_meta,
+                slice_idx,
+                title="Entropy",
+                cmap="viridis"
+            ))
+
+
+if __name__ == "__main__":
+    main()
