@@ -18,22 +18,27 @@ from app_utils import (
 )
 
 
-@st.cache_resource
-def initialize_app():
-    """Load dataset metadata and models once"""
-    if not os.path.exists(DATA_ROOT):
+def download_dataset():
+    with st.spinner("Downloading and extracting dataset..."):
         subprocess.run(['wget', DATASET_LINK_AWS])
         datafile = tarfile.open(f'{DATA_ROOT}.tar')
         datafile.extractall()
         datafile.close()
+
+
+@st.cache_resource
+def initialize_app():
+    """Load dataset metadata and models once"""
     with (DATA_ROOT / "dataset.json").open() as f:
         dataset_meta = json.load(f)
 
     test_files = [str(DATA_ROOT / p) for p in dataset_meta["test"]]
 
+    in_channels = len(dataset_meta["modality"])
+    out_channels = len(dataset_meta["labels"])
     models = {
-        "ensemble": [load_model(p, 4, 4) for p in MODEL_PATHS["ensemble"]],
-        "mc_dropout": [load_model(MODEL_PATHS["mc_dropout"][0], 4, 4, eval_mode=False)]
+        "ensemble": [load_model(p, in_channels, out_channels) for p in MODEL_PATHS["ensemble"]],
+        "mc_dropout": [load_model(MODEL_PATHS["mc_dropout"][0], in_channels, out_channels, eval_mode=False)]
     }
 
     return dataset_meta, test_files, models
@@ -51,6 +56,8 @@ def main():
     st.title("3D Brain Tumor Segmentation")
 
     # Load initial data and models
+    if not os.path.exists(DATA_ROOT):
+        download_dataset()
     dataset_meta, test_files, models = initialize_app()
 
     # Hardware information
