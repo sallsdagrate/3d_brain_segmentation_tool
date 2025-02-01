@@ -1,24 +1,38 @@
 import platform
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Callable
 from pathlib import Path
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import nibabel as nib
 import numpy as np
 import torch
-
+from matplotlib import colors
+from utils.config import transform_test, get_segresnet, get_unet3d
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 DATA_ROOT = Path("Task01_BrainTumour")
 DATASET_LINK_AWS = 'https://msd-for-monai.s3-us-west-2.amazonaws.com/Task01_BrainTumour.tar'
 MODEL_PATHS = {
-    "ensemble": [
-        "models/unet_3d_model_17.pth",
-        "models/unet_3d_model_18.pth",
-        "models/unet_3d_model_19.pth"
-    ],
-    "mc_dropout": ["models/unet_3d_model_19.pth"]
+    "segresnet": {
+        "ensemble": [
+            "models/segresnet/segresnet_model_9.pth",
+            "models/segresnet/segresnet_model_10.pth",
+            "models/segresnet/segresnet_model_11.pth"
+        ],
+        "mc_dropout": "models/segresnet/segresnet_model_11.pth",
+        "func": get_unet3d
+    },
+    "unet3d": {
+        "ensemble": [
+            "models/unet3d/unet_3d_model_17.pth",
+            "models/unet3d/unet_3d_model_18.pth",
+            "models/unet3d/unet_3d_model_19.pth"
+        ],
+        "mc_dropout": "models/unet3d/unet_3d_model_19.pth",
+        "func": get_unet3d
+    }
 }
+# get_model_dict
 
 '''
 COLOUR MAPS
@@ -49,12 +63,12 @@ def load_model(
         checkpoint_path: str,
         in_channels: int,
         num_classes: int,
+        load_func: Callable[[int, int], tuple[torch.nn.Module, dict]],
         eval_mode: bool = True
 ) -> torch.nn.Module:
     """Load 3D U-Net model from checkpoint"""
-    from utils.config import get_unet3d  # Local import to avoid circular dependency
-
-    model = get_unet3d(in_channels, num_classes)
+    print(load_func)
+    model = load_func(in_channels, num_classes)[0]
     model.load_state_dict(torch.load(checkpoint_path, map_location=DEVICE))
 
     if eval_mode:

@@ -1,7 +1,6 @@
 import os.path
 import shutil
 import urllib
-import sys
 import torch
 import streamlit as st
 import json
@@ -56,14 +55,7 @@ def initialize_app():
 
     test_files = [str(DATA_ROOT / p) for p in dataset_meta["test"]]
 
-    in_channels = len(dataset_meta["modality"])
-    out_channels = len(dataset_meta["labels"])
-    models = {
-        "ensemble": [load_model(p, in_channels, out_channels) for p in MODEL_PATHS["ensemble"]],
-        "mc_dropout": [load_model(MODEL_PATHS["mc_dropout"][0], in_channels, out_channels, eval_mode=False)]
-    }
-
-    return dataset_meta, test_files, models
+    return dataset_meta, test_files
 
 
 # Cache segmentation results
@@ -75,11 +67,8 @@ def run_inference_cached(_models, method_name, volume_path, num_samples=10):
 
 def main():
 
-    # if 'streamlit' in sys.modules:
-    #     torch._C._jit_override_can_fuse_on_cpu(True)
 
     _dummy = torch.tensor([0])
-    # if not torch.cuda.is_available():
     torch.set_default_device('cpu')
 
     st.set_page_config(layout="wide")
@@ -87,30 +76,51 @@ def main():
 
     # Load initial data and models
     download_dataset()
-    dataset_meta, test_files, models = initialize_app()
+    dataset_meta, test_files = initialize_app()
 
     # Hardware information
     with st.expander("System Information"):
         for k, v in get_hardware_info().items():
             st.write(f"**{k}:** {v}")
 
+    in_channels = len(dataset_meta["modality"])
+    out_channels = len(dataset_meta["labels"])
+
     # File selection
     selected_file = st.selectbox("Select medical scan:", test_files)
     volume = load_medical_volume(selected_file)
 
     # Visualization controls
-    st.subheader("Visualization Settings")
-    col1, col2, col3 = st.columns([2, 4, 2])  # Adjust column widths
+    st.subheader("Inference Settings")
+    col1, col2, col3, col4 = st.columns([2, 2, 4, 2])  # Adjust column widths
 
     with col1:
         method = st.radio("Uncertainty Method:", ["ensemble", "mc_dropout"])
 
     with col2:
+        model_architecture = st.radio("Model Architecture:", ["UNet3D", "SegResNet"], index=0)
+
+    with col3:
         slice_idx = st.slider("Slice Index:", 0, volume.shape[-1] - 1, volume.shape[-1] // 2)
         overlay_alpha = st.slider("Segmentation Opacity:", 0.0, 1.0, 0.5, 0.01)
 
-    with col3:
+    with col4:
         st.pyplot(create_static_color_key(dataset_meta["labels"]), use_container_width=False)
+
+    models = {
+        "ensemble": [load_model(p,
+                                in_channels, out_channels,
+                                load_func=MODEL_PATHS[model_architecture.lower()]["func"]
+                                )
+                     for p in MODEL_PATHS[model_architecture.lower()]["ensemble"]
+                     ],
+        "mc_dropout": [load_model(MODEL_PATHS[model_architecture.lower()]["mc_dropout"],
+                                  in_channels, out_channels,
+                                  load_func=MODEL_PATHS[model_architecture.lower()]["func"],
+                                  eval_mode=False
+                                  )
+                       ]
+    }
 
     if method == "mc_dropout":
         mc_passes = st.slider("Monte Carlo Samples:", 1, 20, 10)

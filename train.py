@@ -42,7 +42,8 @@ def main():
         type=str,
         required=True,
         choices=["segresnet", "unet3d"],
-        help="Choose which model to train: segresnet or unet3d."
+        help="Choose which model to train: segresnet or unet3d.",
+        default="unet3d"
     )
     args = parser.parse_args()
 
@@ -56,10 +57,10 @@ def main():
 
     # Create the model
     if args.model == "segresnet":
-        model, training_params = get_unet3d(IN_MODALITIES, NUM_CLASSES)
+        model, training_params = get_segresnet(IN_MODALITIES, NUM_CLASSES)
         print("Using SegResNet")
     else:  # 'unet3d'
-        model, training_params = get_segresnet(IN_MODALITIES, NUM_CLASSES)
+        model, training_params = get_unet3d(IN_MODALITIES, NUM_CLASSES)
         print("Using UNet3D")
     model.to(device)
 
@@ -114,7 +115,7 @@ def main():
         val_loss /= len(val_loader)
         print(f"Validation Loss: {val_loss:.4f}")
 
-        torch.save(model.state_dict(), f"models/unet_3d_model_{epoch}.pth")
+        torch.save(model.state_dict(), f"models/{args.model}/{args.model}_model_{epoch}.pth")
         scheduler.step()
 
 if __name__ == "__main__":

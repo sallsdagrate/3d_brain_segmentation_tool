@@ -1,6 +1,5 @@
 import torch
 import torch.nn.functional as F
-from matplotlib import colors
 from monai.networks.nets import UNet, SegResNet
 
 from monai.transforms import (
