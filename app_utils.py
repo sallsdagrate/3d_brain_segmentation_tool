@@ -7,7 +7,6 @@ import nibabel as nib
 import numpy as np
 import torch
 
-from utils.config import transform_test, cmap_black, transparent_cmap
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 DATA_ROOT = Path("Task01_BrainTumour")
@@ -20,6 +19,20 @@ MODEL_PATHS = {
     ],
     "mc_dropout": ["models/unet_3d_model_19.pth"]
 }
+
+'''
+COLOUR MAPS
+'''
+cs = ['green', 'blue', 'red']
+label_to_color = {i+1: c for i, c in enumerate(cs)}
+cmap_black = colors.ListedColormap(['black', cs[0], cs[1], cs[2]])
+cmap_empty = colors.ListedColormap(['none', cs[0], cs[1], cs[2]])
+transparent_cmap = colors.ListedColormap([
+    (0, 0, 0, 0),   # 0 => transparent
+    (0, 1, 0, 1),   # 1 => green
+    (0, 0, 1, 1),   # 2 => blue
+    (1, 0, 0, 1)    # 3 => red
+])
 
 def get_hardware_info() -> Dict[str, str]:
     """Get system and PyTorch hardware information"""
@@ -39,9 +52,9 @@ def load_model(
         eval_mode: bool = True
 ) -> torch.nn.Module:
     """Load 3D U-Net model from checkpoint"""
-    from utils.config import get_model  # Local import to avoid circular dependency
+    from utils.config import get_unet3d  # Local import to avoid circular dependency
 
-    model = get_model(in_channels, num_classes)
+    model = get_unet3d(in_channels, num_classes)
     model.load_state_dict(torch.load(checkpoint_path, map_location=DEVICE))
 
     if eval_mode:
