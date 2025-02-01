@@ -102,9 +102,9 @@ def get_segresnet(in_channels, out_channels) -> tuple[torch.nn.Module, dict]:
         spatial_dims=3,
         in_channels=in_channels,
         out_channels=out_channels,
-        init_filters=16,
-        blocks_down=[1, 2, 2, 4],
-        blocks_up=[1, 1, 1],
+        init_filters=8,
+        blocks_down=[1, 2, 2],
+        blocks_up=[1, 1],
         dropout_prob=0.2
     ),{
         'lr': 1e-3,
