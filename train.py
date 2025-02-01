@@ -6,6 +6,9 @@ from sklearn.model_selection import train_test_split
 import json
 from tqdm import tqdm
 from torch.optim.lr_scheduler import CosineAnnealingLR
+import os
+import urllib.request
+import tarfile
 
 from utils.BrainTumourDataset import BrainTumorDataset
 from utils.config import (
@@ -17,9 +20,18 @@ from utils.config import (
     num_workers,
     testVsTrainSplit,
     get_unet3d,
-    get_segresnet
+    get_segresnet,
+    DATA_ROOT,
+    DATASET_LINK_AWS
     )
 
+if not os.path.exists(f'{DATA_ROOT}.tar'):
+    print('downloading datset...')
+    urllib.request.urlretrieve(DATASET_LINK_AWS, f'{DATA_ROOT}.tar')
+
+if not os.path.exists(f'{DATA_ROOT}'):
+    with tarfile.open(f"{DATA_ROOT}.tar") as datafile:
+        datafile.extractall()
 
 with open(f'{source_path}/dataset.json') as f:
     dataset_json = json.load(f)

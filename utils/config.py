@@ -1,6 +1,7 @@
 import torch
 import torch.nn.functional as F
 from monai.networks.nets import UNet, SegResNet
+from pathlib import Path
 
 from monai.transforms import (
     Compose,
@@ -15,6 +16,17 @@ from monai.transforms import (
     ToTensord
 )
 
+''' 
+CONFIG VARIABLES
+'''
+
+source_path = 'Task01_BrainTumour'
+num_workers = 8
+testVsTrainSplit = 0.2
+batch_size = 2
+
+DATA_ROOT = Path(source_path)
+DATASET_LINK_AWS = 'https://msd-for-monai.s3-us-west-2.amazonaws.com/Task01_BrainTumour.tar'
 
 def debug_print_transform(data):
     image = data["image"]
@@ -99,13 +111,3 @@ def get_segresnet(in_channels, out_channels) -> tuple[torch.nn.Module, dict]:
         'weight_decay': 1e-5,
         'num_epochs': 20
     }
-
-
-''' 
-CONFIG VARIABLES
-'''
-
-source_path = 'Task01_BrainTumour'
-num_workers = 8
-testVsTrainSplit = 0.2
-batch_size = 2

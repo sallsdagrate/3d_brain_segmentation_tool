@@ -10,8 +10,6 @@ from matplotlib import colors
 from utils.config import transform_test, get_segresnet, get_unet3d
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-DATA_ROOT = Path("Task01_BrainTumour")
-DATASET_LINK_AWS = 'https://msd-for-monai.s3-us-west-2.amazonaws.com/Task01_BrainTumour.tar'
 MODEL_PATHS = {
     "segresnet": {
         "ensemble": [

@@ -15,9 +15,10 @@ from app_utils import (
     generate_uncertainty_visualization,
     gather_predicted_std,
     compute_entropy_map,
-    DATA_ROOT, DATASET_LINK_AWS, MODEL_PATHS
+    MODEL_PATHS
 )
 
+from utils.config import DATA_ROOT, DATASET_LINK_AWS
 import urllib.request
 import tarfile
 import os
