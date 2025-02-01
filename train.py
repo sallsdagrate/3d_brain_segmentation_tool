@@ -25,6 +25,19 @@ from utils.config import (
     DATASET_LINK_AWS
     )
 
+parser = argparse.ArgumentParser(
+        description="Train a 3D segmentation model (SegResNet or UNet3D)."
+)
+parser.add_argument(
+    "--model",
+    type=str,
+    required=True,
+    choices=["segresnet", "unet3d"],
+    help="Choose which model to train: segresnet or unet3d.",
+    default="unet3d"
+)
+args = parser.parse_args()
+
 if not os.path.exists(f'{DATA_ROOT}.tar'):
     print('downloading datset...')
     urllib.request.urlretrieve(DATASET_LINK_AWS, f'{DATA_ROOT}.tar')
@@ -38,26 +51,14 @@ with open(f'{source_path}/dataset.json') as f:
 
 # 80/20 train/validation split
 all_list = dataset_json['training']
-all_ims = [source_path + sample['image'] for sample in all_list]
-all_lbs = [source_path + sample['label'] for sample in all_list]
+all_ims = [str(DATA_ROOT / sample['image']) for sample in all_list]
+all_lbs = [str(DATA_ROOT / sample['label']) for sample in all_list]
 train_ims, val_ims, train_lbs, val_lbs = train_test_split(all_ims, all_lbs, test_size=testVsTrainSplit, random_state=21)
 
 IN_MODALITIES=len(dataset_json['modality']) # 4 modalities
 NUM_CLASSES=len(dataset_json['labels']) # 4 output classes
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Train a 3D segmentation model (SegResNet or UNet3D)."
-    )
-    parser.add_argument(
-        "--model",
-        type=str,
-        required=True,
-        choices=["segresnet", "unet3d"],
-        help="Choose which model to train: segresnet or unet3d.",
-        default="unet3d"
-    )
-    args = parser.parse_args()
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(device)
