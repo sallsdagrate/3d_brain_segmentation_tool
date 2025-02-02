@@ -1,6 +1,8 @@
 import os.path
 import shutil
 import urllib
+
+import numpy as np
 import torch
 import streamlit as st
 import json
@@ -61,15 +63,13 @@ def initialize_app():
 
 # Cache segmentation results
 @st.cache_data(max_entries=3, show_spinner=False)
-def run_inference_cached(_models, method_name, volume_path, num_samples=10):
+def run_inference_cached(_models, model_name, method_name, volume_path, num_samples=10):
     vol = load_medical_volume(volume_path)
-    return run_inference(vol, _models[method_name], method=method_name, num_samples=num_samples)
+    return run_inference(vol, _models, method=method_name, num_samples=num_samples)
 
 
 def main():
 
-
-    _dummy = torch.tensor([0])
     torch.set_default_device('cpu')
 
     st.set_page_config(layout="wide")
@@ -108,20 +108,21 @@ def main():
     with col4:
         st.pyplot(create_static_color_key(dataset_meta["labels"]), use_container_width=False)
 
-    models = {
-        "ensemble": [load_model(p,
-                                in_channels, out_channels,
-                                load_func=MODEL_PATHS[model_architecture.lower()]["func"]
-                                )
-                     for p in MODEL_PATHS[model_architecture.lower()]["ensemble"]
-                     ],
-        "mc_dropout": [load_model(MODEL_PATHS[model_architecture.lower()]["mc_dropout"],
-                                  in_channels, out_channels,
-                                  load_func=MODEL_PATHS[model_architecture.lower()]["func"],
-                                  eval_mode=False
-                                  )
-                       ]
-    }
+
+
+    if method == "mc_dropout":
+        models = [load_model(MODEL_PATHS[model_architecture.lower()]["mc_dropout"],
+                            in_channels, out_channels,
+                            load_func=MODEL_PATHS[model_architecture.lower()]["func"],
+                            eval_mode=False
+                            )]
+    else: # method == "ensemble"
+        models = [load_model(p,
+                             in_channels, out_channels,
+                             load_func=MODEL_PATHS[model_architecture.lower()]["func"]
+                             )
+                  for p in MODEL_PATHS[model_architecture.lower()]["ensemble"]
+                  ]
 
     if method == "mc_dropout":
         mc_passes = st.slider("Monte Carlo Samples:", 1, 20, 10)
@@ -131,6 +132,7 @@ def main():
             # Get cached results
             pred_label, mean_probs, std_probs = run_inference_cached(
                 models,
+                model_architecture.lower(),
                 method,
                 selected_file,
                 mc_passes if method == "mc_dropout" else 10
@@ -144,7 +146,7 @@ def main():
             st.subheader("Segmentation Results")
 
             # Primary segmentation
-            st.markdown("#### Tissue Segmentation")
+            st.markdown("#### Segmentation")
             st.pyplot(generate_slice_visualization(
                 volume,
                 pred_label,
@@ -153,7 +155,7 @@ def main():
                 overlay_alpha
             ))
 
-            st.markdown("#### Standard Deviation Map")
+            st.markdown("#### Standard Deviation")
             st.pyplot(generate_uncertainty_visualization(
                 volume,
                 pred_std,
@@ -163,7 +165,7 @@ def main():
                 cmap="magma"
             ))
 
-            st.markdown("#### Entropy Analysis")
+            st.markdown("#### Entropy")
             st.pyplot(generate_uncertainty_visualization(
                 volume,
                 entropy_map,

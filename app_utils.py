@@ -1,6 +1,5 @@
 import platform
 from typing import List, Dict, Tuple, Callable
-from pathlib import Path
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import nibabel as nib
@@ -13,12 +12,12 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 MODEL_PATHS = {
     "segresnet": {
         "ensemble": [
-            "models/segresnet/segresnet_model_9.pth",
-            "models/segresnet/segresnet_model_10.pth",
-            "models/segresnet/segresnet_model_11.pth"
+            "models/segresnet/segresnet_model_6.pth",
+            "models/segresnet/segresnet_model_7.pth",
+            "models/segresnet/segresnet_model_8.pth"
         ],
-        "mc_dropout": "models/segresnet/segresnet_model_11.pth",
-        "func": get_unet3d
+        "mc_dropout": "models/segresnet/segresnet_model_8.pth",
+        "func": get_segresnet
     },
     "unet3d": {
         "ensemble": [
@@ -65,7 +64,6 @@ def load_model(
         eval_mode: bool = True
 ) -> torch.nn.Module:
     """Load 3D U-Net model from checkpoint"""
-    print(load_func)
     model = load_func(in_channels, num_classes)[0]
     model.load_state_dict(torch.load(checkpoint_path, map_location=DEVICE))
 
