@@ -34,7 +34,7 @@ cd sallsdagrate-hss_task
 # Install dependencies
 pip install -r requirements.txt
 
-# Download dataset (not required, automatically handled by app)
+# Download dataset (recommended but not required. train.py and app.py downloads it for you)
 wget "https://msd-for-monai.s3-us-west-2.amazonaws.com/Task01_BrainTumour.tar"
 ```
 
