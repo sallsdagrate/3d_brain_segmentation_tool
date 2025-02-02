@@ -8,7 +8,7 @@ import urllib.request
 import tarfile
 import os
 
-from app_utils import (
+from utils.app_utils import (
     get_hardware_info,
     load_model,
     run_inference,
@@ -74,7 +74,7 @@ def main():
     # Load initial data and models
     download_dataset()
     dataset_meta, test_files = initialize_app()
-    print('here')
+
     # Hardware information
     with st.expander("System Information"):
         for k, v in get_hardware_info().items():
@@ -107,14 +107,12 @@ def main():
 
 
     if method == "mc_dropout":
-        print(method)
         models = [load_model(MODEL_PATHS[model_architecture.lower()]["mc_dropout"],
                             in_channels, out_channels,
                             load_func=MODEL_PATHS[model_architecture.lower()]["func"],
                             eval_mode=False
                             )]
     else: # method == "ensemble"
-        print(method)
         models = [load_model(p,
                              in_channels, out_channels,
                              load_func=MODEL_PATHS[model_architecture.lower()]["func"]
