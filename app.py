@@ -1,11 +1,12 @@
 import os.path
 import shutil
 import urllib
-
-import numpy as np
-import torch
 import streamlit as st
 import json
+from utils.config import DATA_ROOT, DATASET_LINK_AWS
+import urllib.request
+import tarfile
+import os
 
 from app_utils import (
     get_hardware_info,
@@ -19,11 +20,6 @@ from app_utils import (
     compute_entropy_map,
     MODEL_PATHS
 )
-
-from utils.config import DATA_ROOT, DATASET_LINK_AWS
-import urllib.request
-import tarfile
-import os
 
 
 @st.cache_resource
@@ -70,7 +66,7 @@ def run_inference_cached(_models, model_name, method_name, volume_path, num_samp
 
 def main():
 
-    torch.set_default_device('cpu')
+    # torch.set_default_device('cpu')
 
     st.set_page_config(layout="wide")
     st.title("3D Brain Tumor Segmentation")
@@ -78,7 +74,7 @@ def main():
     # Load initial data and models
     download_dataset()
     dataset_meta, test_files = initialize_app()
-
+    print('here')
     # Hardware information
     with st.expander("System Information"):
         for k, v in get_hardware_info().items():
@@ -90,16 +86,17 @@ def main():
     # File selection
     selected_file = st.selectbox("Select medical scan:", test_files)
     volume = load_medical_volume(selected_file)
-
     # Visualization controls
     st.subheader("Inference Settings")
     col1, col2, col3, col4 = st.columns([2, 2, 4, 2])  # Adjust column widths
 
     with col1:
         method = st.radio("Uncertainty Method:", ["ensemble", "mc_dropout"])
+        st.markdown('**Ensemble:** Average of 3 models\n **MC Dropout:** select number of dropout passes')
 
     with col2:
         model_architecture = st.radio("Model Architecture:", ["UNet3D", "SegResNet"], index=0)
+        st.markdown('Note: Inference may take a while depending on your CPU. UNet is __much__ faster than SegResNet.')
 
     with col3:
         slice_idx = st.slider("Slice Index:", 0, volume.shape[-1] - 1, volume.shape[-1] // 2)
@@ -109,24 +106,23 @@ def main():
         st.pyplot(create_static_color_key(dataset_meta["labels"]), use_container_width=False)
 
 
-
     if method == "mc_dropout":
+        print(method)
         models = [load_model(MODEL_PATHS[model_architecture.lower()]["mc_dropout"],
                             in_channels, out_channels,
                             load_func=MODEL_PATHS[model_architecture.lower()]["func"],
                             eval_mode=False
                             )]
     else: # method == "ensemble"
+        print(method)
         models = [load_model(p,
                              in_channels, out_channels,
                              load_func=MODEL_PATHS[model_architecture.lower()]["func"]
                              )
                   for p in MODEL_PATHS[model_architecture.lower()]["ensemble"]
                   ]
-
     if method == "mc_dropout":
         mc_passes = st.slider("Monte Carlo Samples:", 1, 20, 10)
-
     if st.button("Perform Segmentation"):
         with st.spinner("Analyzing scan..."):
             # Get cached results
@@ -137,7 +133,6 @@ def main():
                 selected_file,
                 mc_passes if method == "mc_dropout" else 10
             )
-
             # Calculate uncertainty metrics
             pred_std = gather_predicted_std(std_probs, pred_label)
             entropy_map = compute_entropy_map(mean_probs)

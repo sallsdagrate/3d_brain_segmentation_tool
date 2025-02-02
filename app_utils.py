@@ -1,14 +1,20 @@
 import platform
 from typing import List, Dict, Tuple, Callable
+
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use("Agg")
+
 import nibabel as nib
 import numpy as np
 import torch
 from matplotlib import colors
 from utils.config import transform_test, get_segresnet, get_unet3d
 
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+DEVICE = torch.device("cpu")
+
 MODEL_PATHS = {
     "segresnet": {
         "ensemble": [
@@ -65,8 +71,7 @@ def load_model(
 ) -> torch.nn.Module:
     """Load 3D U-Net model from checkpoint"""
     model = load_func(in_channels, num_classes)[0]
-    model.load_state_dict(torch.load(checkpoint_path, map_location=DEVICE))
-
+    model.load_state_dict(torch.load(checkpoint_path, map_location=DEVICE, weights_only=True))
     if eval_mode:
         model.eval()
 
