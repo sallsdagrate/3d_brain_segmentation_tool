@@ -28,8 +28,8 @@ A deep learning app for 3D brain tumor segmentation with uncertainty estimation 
 ## Installation
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/sallsdagrate-hss_task.git
-cd sallsdagrate-hss_task
+git clone https://github.com/sallsdagrate/3d_brain_segmentation_tool.git
+cd 3d_brain_segmentation_tool
 
 # Install dependencies
 pip install -r requirements.txt
