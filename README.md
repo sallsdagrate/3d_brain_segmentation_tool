@@ -31,7 +31,7 @@ A deep learning app for 3D brain tumor segmentation with uncertainty estimation 
 git clone https://github.com/sallsdagrate/3d_brain_segmentation_tool.git
 cd 3d_brain_segmentation_tool
 
-# Install dependencies
+# Install dependencies (recommended to set up a virtual environment first)
 pip install -r requirements.txt
 
 # Download dataset (recommended but not required. train.py and app.py downloads it for you)
