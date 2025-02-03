@@ -1,5 +1,7 @@
 # 3D Brain Tumor Segmentation with Uncertainty Estimation
 
+Training and inference webapp for 3d segmentation using Unet and SegResNet.
+
 ![Streamlit Interface Demo](screenshots/page.png)
 
 ## Project Overview
